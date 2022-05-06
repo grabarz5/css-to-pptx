@@ -5,7 +5,7 @@ export class PPTX {
         'HeadingPairs', 'TitlesOfParts'
     ];
 
-    jszip; properties = {}; source;
+    jszip; props = {}; source;
 
     constructor() {
         if(typeof JSZip === 'undefined'){
@@ -21,19 +21,27 @@ export class PPTX {
         this.source = await this.jszip.loadAsync(file);
     }
 
-    async getProperties(...props){
+    async properties(...props){
         const _docProps = await this.source.folder('docProps').file('app.xml').async('string');
+        const _docPropsCore = await this.source.folder('docProps').file('core.xml').async('string');
+        
         const docPropsXML = this.parseXML(_docProps).querySelector('Properties');
+        const docPropsCoreXML = this.parseXML(_docPropsCore).getElementsByTagName('cp:coreProperties')[0];
 
         docPropsXML.childNodes.forEach(node => {
             if(!this.exclude.includes(node.tagName)){
                 if(!props.length || props.includes(node.tagName)){
-                    this.properties[node.tagName] = this.setType(node.textContent);
+                    this.props[node.tagName] = this.setType(node.textContent);
                 }
             }
         });
 
-        return this.properties;
+        docPropsCoreXML.childNodes.forEach(node => {
+            const key = node.tagName.split(':')[1];
+            this.props[key.charAt(0).toUpperCase() + key.slice(1)] = this.setType(node.textContent);
+        });
+
+        return this.props;
     }
 
     parseXML(src){
